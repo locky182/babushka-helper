@@ -1,17 +1,20 @@
-# pressure_record
+markdown
 
-A new Flutter project.
+# Дневник Давления ❤️
 
-## Getting Started
+Мобильное приложение на Flutter для простого контроля артериального давления. Специально разработано с учетом потребностей пожилых людей: крупные шрифты, контрастные цвета и понятный интерфейс.
 
-This project is a starting point for a Flutter application.
+## ✨ Основные функции
 
-A few resources to get you started if this is your first Flutter project:
+- ✅ Добавление замеров (систолическое, диастолическое давление и пульс).
+- ✅ Группировка истории по дням.
+- ✅ Автоматический расчет среднего значения за день.
+- ✅ Цветовая индикация состояния ("Светофор").
+- ✅ Удаление ошибочных записей свайпом.
+- ⏳ В разработке: Графики динамики за неделю.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 🛠 Технологии
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- **Framework:** Flutter (Material 3)
+- **Database:** SQLite (sqflite)
+- **State Management:** StatefulWidget / FutureBuilder
