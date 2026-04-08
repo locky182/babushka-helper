@@ -88,6 +88,44 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
     });
   }
 
+  void _showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Как пользоваться?"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _helpItem(
+                Icons.bar_chart, "Иконка сверху открывает график аналитики."),
+            _helpItem(
+                Icons.swipe_left, "Свайп влево по замеру удалит его из базы."),
+            _helpItem(Icons.circle,
+                "Цвета (синий,зеленый, желтый, красный) показывают уровень давления."),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Понятно"))
+        ],
+      ),
+    );
+  }
+
+  Widget _helpItem(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
+        ],
+      ),
+    );
+  }
+
   Map<DateTime, List<PressureRecord>> _groupByDay(
       List<PressureRecord> records) {
     final map = <DateTime, List<PressureRecord>>{};
@@ -127,6 +165,10 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
         title: const Text('Мои замеры'),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            onPressed: () => _showHelpDialog(context),
+          ),
           IconButton(
             icon: const Icon(Icons.bar_chart, size: 30), // Иконка графика
             onPressed: () {
