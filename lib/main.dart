@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pressure_record/widgets/pressure_chart.dart';
 
 import 'models/pressure_record.dart';
 import 'screens/add_record_screen.dart';
@@ -125,6 +126,20 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
       appBar: AppBar(
         title: const Text('Мои замеры'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart, size: 30), // Иконка графика
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      StatisticsScreen(recordsFuture: _recordsFuture),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<List<PressureRecord>>(
         future: _recordsFuture,
@@ -171,7 +186,7 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
       Map<DateTime, List<PressureRecord>> grouped, List<DateTime> days) {
     int count = 0;
     for (var day in days) {
-      count += 1 + grouped[day]!.length; // Заголовок + записи
+      count += 1 + grouped[day]!.length;
     }
     return count;
   }
@@ -223,7 +238,7 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Icon(
-          Icons.favorite_rounded, // Те самые сердечки
+          Icons.favorite_rounded,
           color: record.statusColor,
           size: 32,
         ),
@@ -270,11 +285,60 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
   Widget _buildStatColumn(String label, String value, Color color) {
     return Column(
       children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         Text(value,
             style: TextStyle(
-                fontSize: 28, fontWeight: FontWeight.bold, color: color)),
-        Text(label, style: const TextStyle(fontSize: 12)),
+                fontSize: 22, fontWeight: FontWeight.bold, color: color)),
       ],
+    );
+  }
+}
+
+class StatisticsScreen extends StatelessWidget {
+  final Future<List<PressureRecord>> recordsFuture;
+  const StatisticsScreen({super.key, required this.recordsFuture});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Аналитика")),
+      body: FutureBuilder<List<PressureRecord>>(
+        future: recordsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final records = snapshot.data ?? [];
+          if (records.isEmpty)
+            return const Center(child: Text("Нет данных для анализа"));
+
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  "Динамика давления",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                // Оборачиваем график в Expanded, чтобы он занял доступное место
+                Expanded(
+                  child: PressureChart(records: records),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  "Всего замеров: ${records.length}",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
