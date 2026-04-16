@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pressure_record/widgets/pressure_chart.dart';
+import 'package:pressure_record/screens/splash_screen.dart';
 
 import 'models/pressure_record.dart';
 import 'screens/add_record_screen.dart';
@@ -58,7 +59,7 @@ class PressureApp extends StatelessWidget {
           bodyMedium: TextStyle(fontSize: 18),
         ),
       ),
-      home: const MainHistoryScreen(),
+      home: const SplashScreen(),
     );
   }
 }
@@ -299,7 +300,7 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
     return Card(
       margin: const EdgeInsets.all(16),
       elevation: 4,
-      color: avg.statusColor.withOpacity(0.1),
+      color: avg.statusColor.withValues(alpha: 0.5),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: avg.statusColor, width: 2)),
@@ -352,8 +353,9 @@ class StatisticsScreen extends StatelessWidget {
           }
 
           final records = snapshot.data ?? [];
-          if (records.isEmpty)
+          if (records.isEmpty) {
             return const Center(child: Text("Нет данных для анализа"));
+          }
 
           return Padding(
             padding: const EdgeInsets.all(16.0),

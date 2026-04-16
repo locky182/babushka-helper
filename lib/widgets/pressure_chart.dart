@@ -1,7 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import 'package:pressure_record/models/pressure_record.dart';
 
 class PressureChart extends StatelessWidget {
@@ -32,7 +31,8 @@ class PressureChart extends StatelessWidget {
             show: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (value) => FlLine(
-              color: Colors.grey.withOpacity(0.2),
+              color:
+                  Colors.grey.withValues(alpha: 0.2), // Исправлено (withValues)
               strokeWidth: 1,
             ),
           ),
@@ -64,7 +64,6 @@ class PressureChart extends StatelessWidget {
       dotData: FlDotData(
         show: true,
         getDotPainter: (spot, percent, barData, index) {
-          // Используем твою логику цвета из модели для точек!
           return FlDotCirclePainter(
             radius: 4,
             color: sortedRecords[index].statusColor,
@@ -76,8 +75,10 @@ class PressureChart extends StatelessWidget {
       belowBarData: BarAreaData(
         show: true,
         color: isSystolic
-            ? Colors.redAccent.withOpacity(0.05)
-            : Colors.blueAccent.withOpacity(0.05),
+            ? Colors.redAccent
+                .withValues(alpha: 0.05) // Исправлено (withValues)
+            : Colors.blueAccent
+                .withValues(alpha: 0.05), // Исправлено (withValues)
       ),
     );
   }
@@ -102,8 +103,10 @@ class PressureChart extends StatelessWidget {
           interval: 1,
           getTitlesWidget: (value, meta) {
             int index = value.toInt();
-            if (index < 0 || index >= sortedRecords.length)
+            // Исправлено: добавлены фигурные скобки {}
+            if (index < 0 || index >= sortedRecords.length) {
               return const SizedBox();
+            }
 
             // Показываем дату только для каждой 3-й точки, чтобы не частить
             if (sortedRecords.length > 5 &&
@@ -128,7 +131,8 @@ class PressureChart extends StatelessWidget {
   LineTouchData _buildTouchData() {
     return LineTouchData(
       touchTooltipData: LineTouchTooltipData(
-        getTooltipColor: (group) => Colors.white.withOpacity(0.9),
+        getTooltipColor: (group) =>
+            Colors.white.withValues(alpha: 0.9), // Исправлено (withValues)
         getTooltipItems: (touchedSpots) {
           return touchedSpots.map((spot) {
             return LineTooltipItem(
