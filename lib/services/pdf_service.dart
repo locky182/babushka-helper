@@ -1,0 +1,114 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
+import '../models/pressure_record.dart';
+
+class PdfService {
+  static Future<void> createAndShareReport(List<PressureRecord> records) async {
+    final pdf = pw.Document();
+
+    try {
+      // 1. Загружаем шрифты
+      final fontData =
+          await rootBundle.load("assets/images/fonts/Roboto-Regular.ttf");
+      final ttf = pw.Font.ttf(fontData);
+      final boldFontData =
+          await rootBundle.load("assets/images/fonts/Roboto-Bold.ttf");
+      final ttfBold = pw.Font.ttf(boldFontData);
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          theme: pw.ThemeData.withFont(base: ttf, bold: ttfBold),
+          build: (pw.Context context) {
+            return [
+              pw.Header(
+                level: 0,
+                child: pw.Text('Дневник контроля давления',
+                    style: pw.TextStyle(
+                        fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              ),
+              pw.Paragraph(
+                text:
+                    'Дата выгрузки: ${DateTime.now().toString().split('.')[0]}',
+              ),
+              pw.SizedBox(height: 20),
+              if (records.isEmpty)
+                pw.Center(
+                    child: pw.Text('Записей пока нет',
+                        style: pw.TextStyle(fontSize: 18)))
+              else
+                pw.Table(
+                  border: pw.TableBorder.all(color: PdfColors.grey),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(2),
+                    1: const pw.FlexColumnWidth(2),
+                    2: const pw.FlexColumnWidth(1),
+                    3: const pw.FlexColumnWidth(2),
+                  },
+                  children: [
+                    pw.TableRow(
+                      decoration:
+                          const pw.BoxDecoration(color: PdfColors.grey300),
+                      children: [
+                        _buildCell('Дата', isHeader: true),
+                        _buildCell('Давление', isHeader: true),
+                        _buildCell('Пульс', isHeader: true),
+                        _buildCell('Статус', isHeader: true),
+                      ],
+                    ),
+                    ...records.map((r) {
+                      // Логика цвета: красный если систола > 140 или диастола > 90
+                      final bool isHigh = r.systolic > 140 || r.diastolic > 90;
+                      final cellColor =
+                          isHigh ? PdfColors.red100 : PdfColors.green100;
+
+                      return pw.TableRow(
+                        children: [
+                          _buildCell(r.formattedDate),
+                          _buildCell('${r.systolic}/${r.diastolic}',
+                              color: cellColor),
+                          _buildCell(r.pulse.toString()),
+                          _buildCell(r.statusText),
+                        ],
+                      );
+                    }).toList(),
+                  ],
+                ),
+            ];
+          },
+        ),
+      );
+
+      // 2. Сохранение
+      final output = await getTemporaryDirectory();
+      final filePath = "${output.path}/pressure_report.pdf";
+      final file = File(filePath);
+      await file.writeAsBytes(await pdf.save());
+
+      // 3. Поделиться (исправленный синтаксис)
+      await Share.shareXFiles([XFile(filePath)], text: 'Мой дневник давления');
+    } catch (e) {
+      print("Ошибка при создании PDF: $e");
+    }
+  }
+
+  static pw.Widget _buildCell(String text,
+      {bool isHeader = false, PdfColor? color}) {
+    return pw.Container(
+      color: color,
+      padding: const pw.EdgeInsets.all(5),
+      alignment: pw.Alignment.center,
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+}

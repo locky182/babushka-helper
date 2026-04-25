@@ -6,6 +6,7 @@ import 'package:pressure_record/screens/splash_screen.dart';
 import 'models/pressure_record.dart';
 import 'screens/add_record_screen.dart';
 import 'services/database_service.dart';
+import 'services/pdf_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -166,6 +167,22 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
         title: const Text('Мои замеры'),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () async {
+              final records = await _recordsFuture;
+              if (records.isNotEmpty) {
+                await PdfService.createAndShareReport(records);
+              } else {
+                if (!mounted) return;
+                // Создаем переменную мессенджера ДО использования context
+                final messenger = ScaffoldMessenger.of(context);
+                messenger.showSnackBar(
+                  const SnackBar(content: Text("Нет данных для отчета")),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline),
             onPressed: () => _showHelpDialog(context),

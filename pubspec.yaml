@@ -16,13 +16,40 @@ dependencies:
   cupertino_icons: ^1.0.7
   path_provider: ^2.1.0
   fl_chart: ^0.70.0
+  pdf: ^3.11.0
+  share_plus: ^7.2.2
+  printing: ^5.11.0
+  flutter_native_splash: ^2.4.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/heart_pulse.png
+
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/images/fonts/Roboto-Regular.ttf
+        - asset: assets/images/fonts/Roboto-Bold.ttf
+          weight: 700
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/heart_pulse.png"
+  # Настройки для того, чтобы иконка была на весь круг:
+  adaptive_icon_background: "#2E2E2E" # или твой цвет фона
+  adaptive_icon_foreground: "assets/images/heart_pulse.png"
+
+flutter_native_splash:
+  color: "#000000"
+  image: "assets/images/heart_pulse.png"
+  android_12:
+    image: "assets/images/heart_pulse.png"
+    color: "#000000"
