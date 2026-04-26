@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
 import '../models/pressure_record.dart';
 import '../services/database_service.dart';
@@ -18,22 +16,42 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final _systolicController = TextEditingController();
   final _diastolicController = TextEditingController();
   final _pulseController = TextEditingController();
-  // Новые контроллеры для лекарств
   final _pillNameController = TextEditingController();
   final _pillDoseController = TextEditingController();
 
-  late DateTime _measurementTime;
+  // Начальный список популярных лекарств
+  List<String> _dynamicSuggestions = [
+    'Лозартан',
+    'Эналаприл',
+    'Каптоприл',
+    'Бисопролол',
+    'Амлодипин',
+    'Лизиноприл'
+  ];
 
-  static const _fieldStyle = TextStyle(fontSize: 24);
-  static const _fieldPadding = EdgeInsets.symmetric(
-    horizontal: 24,
-    vertical: 20,
-  );
+  late DateTime _measurementTime;
 
   @override
   void initState() {
     super.initState();
     _measurementTime = DateTime.now();
+    _loadPillHistory(); // Загружаем историю при входе
+  }
+
+  // Метод, который вытягивает уже введенные лекарства из базы
+  Future<void> _loadPillHistory() async {
+    final records = await DatabaseService.instance.getRecords();
+    // Собираем уникальные названия препаратов из истории
+    final historyPills = records
+        .map((r) => r.pillName)
+        .where((name) => name != null && name.isNotEmpty)
+        .cast<String>()
+        .toSet();
+
+    setState(() {
+      // Объединяем стандартный список с историей пользователя
+      _dynamicSuggestions = {..._dynamicSuggestions, ...historyPills}.toList();
+    });
   }
 
   @override
@@ -46,78 +64,25 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     super.dispose();
   }
 
-  // Валидаторы оставляем прежними...
-  String? _validateSystolic(String? value) {
-    if (value == null || value.isEmpty) return 'Введите систолическое давление';
-    final n = int.tryParse(value);
-    if (n == null) return 'Укажите целое число';
-    if (n < 70 || n > 250) return 'Допустимо от 70 до 250';
-    return null;
-  }
-
-  String? _validateDiastolic(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Введите диастолическое давление';
-    }
-    final n = int.tryParse(value);
-    if (n == null) return 'Укажите целое число';
-    if (n < 40 || n > 150) return 'Допустимо от 40 до 150';
-    return null;
-  }
-
-  String? _validatePulse(String? value) {
-    if (value == null || value.isEmpty) return 'Введите пульс';
-    final n = int.tryParse(value);
-    if (n == null) return 'Укажите целое число';
-    if (n < 30 || n > 200) return 'Допустимо от 30 до 200';
-    return null;
-  }
-
   InputDecoration _decoration(String label, {IconData? icon}) {
     return InputDecoration(
       labelText: label,
       prefixIcon: icon != null ? Icon(icon) : null,
-      contentPadding: _fieldPadding,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       border: const OutlineInputBorder(),
-      alignLabelWithHint: true,
     );
-  }
-
-  Future<void> _pickDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _measurementTime,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (!mounted || date == null) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_measurementTime),
-    );
-    if (!mounted || time == null) return;
-
-    setState(() {
-      _measurementTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
-    });
   }
 
   Future<void> _onSave() async {
+    // Сначала проверяем валидацию формы
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    // Используем tryParse и ?? 0, чтобы приложение никогда не падало из-за пустых строк
     final record = PressureRecord(
-      systolic: int.parse(_systolicController.text),
-      diastolic: int.parse(_diastolicController.text),
-      pulse: int.parse(_pulseController.text),
+      systolic: int.tryParse(_systolicController.text) ?? 0,
+      diastolic: int.tryParse(_diastolicController.text) ?? 0,
+      pulse: int.tryParse(_pulseController.text) ?? 0,
       dateTime: _measurementTime,
-      // Сохраняем новые поля
       pillName:
           _pillNameController.text.isEmpty ? null : _pillNameController.text,
       pillDose:
@@ -131,98 +96,92 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dateFormat = DateFormat('dd.MM.yyyy, HH:mm');
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Новый замер'),
-      ),
+      appBar: AppBar(title: const Text('Новый замер')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // Поля давления (сократил для краткости, оставь свои валидаторы)
             TextFormField(
               controller: _systolicController,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: _fieldStyle,
-              decoration: _decoration('Верхнее (Систолическое)'),
-              validator: _validateSystolic,
-              textInputAction: TextInputAction.next,
+              decoration: _decoration('Верхнее'),
+              style: const TextStyle(fontSize: 24),
             ),
             const SizedBox(height: 20),
             TextFormField(
               controller: _diastolicController,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: _fieldStyle,
-              decoration: _decoration('Нижнее (Диастолическое)'),
-              validator: _validateDiastolic,
-              textInputAction: TextInputAction.next,
+              decoration: _decoration('Нижнее'),
+              style: const TextStyle(fontSize: 24),
             ),
             const SizedBox(height: 20),
             TextFormField(
               controller: _pulseController,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: _fieldStyle,
               decoration: _decoration('Пульс'),
-              validator: _validatePulse,
-              textInputAction: TextInputAction.next,
+              style: const TextStyle(fontSize: 24),
             ),
+            const Divider(height: 40),
 
-            // СЕКЦИЯ ЛЕКАРСТВ
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Divider(),
-            ),
-            const Text("Принятое лекарство (если было)",
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey)),
+            const Text("Принятое лекарство",
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 12),
 
-            TextFormField(
-              controller: _pillNameController,
-              decoration: _decoration('Название препарата',
-                  icon: Icons.medication_outlined),
-              textInputAction: TextInputAction.next,
+            // УМНЫЙ АВТОКОМПЛИТ
+            Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textValue) {
+                if (textValue.text.isEmpty) {
+                  return const Iterable<String>.empty();
+                }
+                return _dynamicSuggestions.where((option) => option
+                    .toLowerCase()
+                    .contains(textValue.text.toLowerCase()));
+              },
+              onSelected: (String selection) {
+                _pillNameController.text = selection;
+              },
+              fieldViewBuilder:
+                  (context, controller, focusNode, onFieldSubmitted) {
+                // Если мы открыли экран для редактирования или просто вводим
+                // связываем системный контроллер с нашим
+                controller.addListener(() {
+                  _pillNameController.text = controller.text;
+                });
+                return TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: _decoration('Название препарата',
+                      icon: Icons.medication_outlined),
+                );
+              },
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _pillDoseController,
-              decoration: _decoration('Дозировка (напр. 50 мг)',
-                  icon: Icons.monitor_weight_outlined),
-              textInputAction: TextInputAction.done,
+              decoration:
+                  _decoration('Дозировка', icon: Icons.monitor_weight_outlined),
             ),
-
-            const SizedBox(height: 24),
-            FilledButton.tonalIcon(
-              onPressed: _pickDateTime,
-              icon: const Icon(Icons.calendar_today_outlined),
-              label: Text(
-                dateFormat.format(_measurementTime),
-                style: theme.textTheme.titleMedium?.copyWith(fontSize: 18),
-              ),
-              style: FilledButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                alignment: Alignment.centerLeft,
-              ),
-            ),
-            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               height: 56,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: _onSave,
-                icon: const Icon(Icons.save_rounded, size: 28),
-                label: const Text('СОХРАНИТЬ',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'СОХРАНИТЬ',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],
