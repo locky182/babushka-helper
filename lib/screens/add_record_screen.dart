@@ -103,12 +103,18 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
+
+    // 1. ПРОВЕРКА ПОСЛЕ ВЫБОРА ДАТЫ
+    if (!mounted) return;
     if (date == null) return;
 
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(_measurementTime),
     );
+
+    // 2. ПРОВЕРКА ПОСЛЕ ВЫБОРА ВРЕМЕНИ
+    if (!mounted) return;
     if (time == null) return;
 
     setState(() {
@@ -198,8 +204,9 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
 
             Autocomplete<String>(
               optionsBuilder: (TextEditingValue textValue) {
-                if (textValue.text.isEmpty)
+                if (textValue.text.isEmpty) {
                   return const Iterable<String>.empty();
+                }
                 return _dynamicSuggestions.where((option) => option
                     .toLowerCase()
                     .contains(textValue.text.toLowerCase()));
