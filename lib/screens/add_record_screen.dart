@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 
 import '../models/pressure_record.dart';
 import '../services/database_service.dart';
@@ -19,7 +21,6 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final _pillNameController = TextEditingController();
   final _pillDoseController = TextEditingController();
 
-  // Начальный список популярных лекарств
   List<String> _dynamicSuggestions = [
     'Лозартан',
     'Эналаприл',
@@ -35,13 +36,11 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   void initState() {
     super.initState();
     _measurementTime = DateTime.now();
-    _loadPillHistory(); // Загружаем историю при входе
+    _loadPillHistory();
   }
 
-  // Метод, который вытягивает уже введенные лекарства из базы
   Future<void> _loadPillHistory() async {
     final records = await DatabaseService.instance.getRecords();
-    // Собираем уникальные названия препаратов из истории
     final historyPills = records
         .map((r) => r.pillName)
         .where((name) => name != null && name.isNotEmpty)
@@ -49,7 +48,6 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         .toSet();
 
     setState(() {
-      // Объединяем стандартный список с историей пользователя
       _dynamicSuggestions = {..._dynamicSuggestions, ...historyPills}.toList();
     });
   }
@@ -64,6 +62,31 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     super.dispose();
   }
 
+  // СТРОГИЕ ВАЛИДАТОРЫ
+  String? _validateSystolic(String? value) {
+    if (value == null || value.isEmpty) return 'Введите число';
+    final n = int.tryParse(value);
+    if (n == null) return 'Только цифры';
+    if (n < 70 || n > 250) return 'Нужно от 70 до 250';
+    return null;
+  }
+
+  String? _validateDiastolic(String? value) {
+    if (value == null || value.isEmpty) return 'Введите число';
+    final n = int.tryParse(value);
+    if (n == null) return 'Только цифры';
+    if (n < 40 || n > 150) return 'Нужно от 40 до 150';
+    return null;
+  }
+
+  String? _validatePulse(String? value) {
+    if (value == null || value.isEmpty) return 'Введите число';
+    final n = int.tryParse(value);
+    if (n == null) return 'Только цифры';
+    if (n < 30 || n > 200) return 'Нужно от 30 до 200';
+    return null;
+  }
+
   InputDecoration _decoration(String label, {IconData? icon}) {
     return InputDecoration(
       labelText: label,
@@ -73,15 +96,39 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     );
   }
 
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _measurementTime,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (date == null) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_measurementTime),
+    );
+    if (time == null) return;
+
+    setState(() {
+      _measurementTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
   Future<void> _onSave() async {
-    // Сначала проверяем валидацию формы
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    // Используем tryParse и ?? 0, чтобы приложение никогда не падало из-за пустых строк
     final record = PressureRecord(
-      systolic: int.tryParse(_systolicController.text) ?? 0,
-      diastolic: int.tryParse(_diastolicController.text) ?? 0,
-      pulse: int.tryParse(_pulseController.text) ?? 0,
+      systolic: int.parse(_systolicController.text),
+      diastolic: int.parse(_diastolicController.text),
+      pulse: int.parse(_pulseController.text),
       dateTime: _measurementTime,
       pillName:
           _pillNameController.text.isEmpty ? null : _pillNameController.text,
@@ -96,6 +143,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dateFormat = DateFormat('dd.MM.yyyy, HH:mm');
+
     return Scaffold(
       appBar: AppBar(title: const Text('Новый замер')),
       body: Form(
@@ -103,40 +152,54 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Поля давления (сократил для краткости, оставь свои валидаторы)
             TextFormField(
               controller: _systolicController,
               keyboardType: TextInputType.number,
-              decoration: _decoration('Верхнее'),
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: _decoration('Верхнее (Систола)'),
               style: const TextStyle(fontSize: 24),
+              validator: _validateSystolic,
             ),
             const SizedBox(height: 20),
             TextFormField(
               controller: _diastolicController,
               keyboardType: TextInputType.number,
-              decoration: _decoration('Нижнее'),
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: _decoration('Нижнее (Диастола)'),
               style: const TextStyle(fontSize: 24),
+              validator: _validateDiastolic,
             ),
             const SizedBox(height: 20),
             TextFormField(
               controller: _pulseController,
               keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: _decoration('Пульс'),
               style: const TextStyle(fontSize: 24),
+              validator: _validatePulse,
             ),
-            const Divider(height: 40),
+            const SizedBox(height: 20),
 
+            // Кнопка выбора времени
+            OutlinedButton.icon(
+              onPressed: _pickDateTime,
+              icon: const Icon(Icons.access_time),
+              label: Text("Время: ${dateFormat.format(_measurementTime)}"),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+            ),
+
+            const Divider(height: 40),
             const Text("Принятое лекарство",
                 style:
                     TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 12),
 
-            // УМНЫЙ АВТОКОМПЛИТ
             Autocomplete<String>(
               optionsBuilder: (TextEditingValue textValue) {
-                if (textValue.text.isEmpty) {
+                if (textValue.text.isEmpty)
                   return const Iterable<String>.empty();
-                }
                 return _dynamicSuggestions.where((option) => option
                     .toLowerCase()
                     .contains(textValue.text.toLowerCase()));
@@ -146,8 +209,6 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               },
               fieldViewBuilder:
                   (context, controller, focusNode, onFieldSubmitted) {
-                // Если мы открыли экран для редактирования или просто вводим
-                // связываем системный контроллер с нашим
                 controller.addListener(() {
                   _pillNameController.text = controller.text;
                 });
@@ -165,23 +226,21 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               decoration:
                   _decoration('Дозировка', icon: Icons.monitor_weight_outlined),
             ),
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
                 onPressed: _onSave,
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text(
-                  'СОХРАНИТЬ',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                child: const Text('СОХРАНИТЬ',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
