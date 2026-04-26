@@ -18,6 +18,9 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final _systolicController = TextEditingController();
   final _diastolicController = TextEditingController();
   final _pulseController = TextEditingController();
+  // Новые контроллеры для лекарств
+  final _pillNameController = TextEditingController();
+  final _pillDoseController = TextEditingController();
 
   late DateTime _measurementTime;
 
@@ -38,18 +41,17 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     _systolicController.dispose();
     _diastolicController.dispose();
     _pulseController.dispose();
+    _pillNameController.dispose();
+    _pillDoseController.dispose();
     super.dispose();
   }
 
+  // Валидаторы оставляем прежними...
   String? _validateSystolic(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Введите систолическое давление';
-    }
+    if (value == null || value.isEmpty) return 'Введите систолическое давление';
     final n = int.tryParse(value);
     if (n == null) return 'Укажите целое число';
-    if (n < 70 || n > 250) {
-      return 'Допустимо от 70 до 250';
-    }
+    if (n < 70 || n > 250) return 'Допустимо от 70 до 250';
     return null;
   }
 
@@ -59,27 +61,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     }
     final n = int.tryParse(value);
     if (n == null) return 'Укажите целое число';
-    if (n < 40 || n > 150) {
-      return 'Допустимо от 40 до 150';
-    }
+    if (n < 40 || n > 150) return 'Допустимо от 40 до 150';
     return null;
   }
 
   String? _validatePulse(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Введите пульс';
-    }
+    if (value == null || value.isEmpty) return 'Введите пульс';
     final n = int.tryParse(value);
     if (n == null) return 'Укажите целое число';
-    if (n < 30 || n > 200) {
-      return 'Допустимо от 30 до 200';
-    }
+    if (n < 30 || n > 200) return 'Допустимо от 30 до 200';
     return null;
   }
 
-  InputDecoration _decoration(String label) {
+  InputDecoration _decoration(String label, {IconData? icon}) {
     return InputDecoration(
       labelText: label,
+      prefixIcon: icon != null ? Icon(icon) : null,
       contentPadding: _fieldPadding,
       border: const OutlineInputBorder(),
       alignLabelWithHint: true,
@@ -120,6 +117,11 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
       diastolic: int.parse(_diastolicController.text),
       pulse: int.parse(_pulseController.text),
       dateTime: _measurementTime,
+      // Сохраняем новые поля
+      pillName:
+          _pillNameController.text.isEmpty ? null : _pillNameController.text,
+      pillDose:
+          _pillDoseController.text.isEmpty ? null : _pillDoseController.text,
     );
 
     await DatabaseService.instance.insertRecord(record);
@@ -168,8 +170,35 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               style: _fieldStyle,
               decoration: _decoration('Пульс'),
               validator: _validatePulse,
+              textInputAction: TextInputAction.next,
+            ),
+
+            // СЕКЦИЯ ЛЕКАРСТВ
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Divider(),
+            ),
+            const Text("Принятое лекарство (если было)",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey)),
+            const SizedBox(height: 12),
+
+            TextFormField(
+              controller: _pillNameController,
+              decoration: _decoration('Название препарата',
+                  icon: Icons.medication_outlined),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _pillDoseController,
+              decoration: _decoration('Дозировка (напр. 50 мг)',
+                  icon: Icons.monitor_weight_outlined),
               textInputAction: TextInputAction.done,
             ),
+
             const SizedBox(height: 24),
             FilledButton.tonalIcon(
               onPressed: _pickDateTime,
@@ -179,10 +208,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 style: theme.textTheme.titleMedium?.copyWith(fontSize: 18),
               ),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 alignment: Alignment.centerLeft,
               ),
             ),
@@ -193,17 +220,9 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
               child: ElevatedButton.icon(
                 onPressed: _onSave,
                 icon: const Icon(Icons.save_rounded, size: 28),
-                label: const Text(
-                  'СОХРАНИТЬ',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  elevation: 2,
-                ),
+                label: const Text('СОХРАНИТЬ',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ),
           ],

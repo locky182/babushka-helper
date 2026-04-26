@@ -1,11 +1,9 @@
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
-
 import '../models/pressure_record.dart';
 
 class DatabaseService {
   DatabaseService._internal();
-
   static final DatabaseService instance = DatabaseService._internal();
 
   Database? _database;
@@ -18,9 +16,10 @@ class DatabaseService {
   Future<Database> _open() async {
     final dbPath = await getDatabasesPath();
     final path = p.join(dbPath, 'pressure_diary.db');
+
     return openDatabase(
       path,
-      version: 1,
+      version: 2, // Поднимаем версию до 2
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE records (
@@ -28,21 +27,26 @@ class DatabaseService {
             systolic INTEGER,
             diastolic INTEGER,
             pulse INTEGER,
-            dateTime TEXT
+            dateTime TEXT,
+            pillName TEXT,
+            pillDose TEXT
           )
         ''');
+      },
+      // Этот блок добавит колонки в уже существующую базу у мамы на телефоне
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute('ALTER TABLE records ADD COLUMN pillName TEXT');
+          await db.execute('ALTER TABLE records ADD COLUMN pillDose TEXT');
+        }
       },
     );
   }
 
   Future<int> insertRecord(PressureRecord record) async {
     final db = await database;
-    return db.insert('records', {
-      'systolic': record.systolic,
-      'diastolic': record.diastolic,
-      'pulse': record.pulse,
-      'dateTime': record.dateTime.toIso8601String(),
-    });
+    // Используем метод toMap() из модели, он уже умеет работать с pillName/pillDose
+    return db.insert('records', record.toMap());
   }
 
   Future<List<PressureRecord>> getRecords() async {

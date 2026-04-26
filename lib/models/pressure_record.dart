@@ -9,6 +9,8 @@ class PressureRecord {
   final int diastolic; // Нижнее
   final int pulse;
   final DateTime dateTime;
+  final String? pillName; // Название лекарства
+  final String? pillDose; // Дозировка
 
   PressureRecord({
     this.id,
@@ -16,6 +18,8 @@ class PressureRecord {
     required this.diastolic,
     required this.pulse,
     required this.dateTime,
+    this.pillName,
+    this.pillDose,
   });
 
   // Конвертация в Map для БД (sqflite)
@@ -26,6 +30,8 @@ class PressureRecord {
       'diastolic': diastolic,
       'pulse': pulse,
       'dateTime': dateTime.toIso8601String(),
+      'pillName': pillName,
+      'pillDose': pillDose,
     };
   }
 
@@ -37,6 +43,8 @@ class PressureRecord {
       diastolic: map['diastolic'],
       pulse: map['pulse'],
       dateTime: DateTime.parse(map['dateTime']),
+      pillName: map['pillName'],
+      pillDose: map['pillDose'],
     );
   }
 
@@ -83,6 +91,5 @@ class PressureRecord {
     }
   }
 
-  /// Совпадает с [PressureStatus.high].
   bool get isHigh => status == PressureStatus.high;
 }

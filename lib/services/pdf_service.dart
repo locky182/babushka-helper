@@ -39,15 +39,17 @@ class PdfService {
               if (records.isEmpty)
                 pw.Center(
                     child: pw.Text('Записей пока нет',
-                        style: pw.TextStyle(fontSize: 18)))
+                        style: const pw.TextStyle(fontSize: 18)))
               else
                 pw.Table(
                   border: pw.TableBorder.all(color: PdfColors.grey),
                   columnWidths: {
-                    0: const pw.FlexColumnWidth(2),
-                    1: const pw.FlexColumnWidth(2),
-                    2: const pw.FlexColumnWidth(1),
-                    3: const pw.FlexColumnWidth(2),
+                    0: const pw.FlexColumnWidth(2.2), // Дата
+                    1: const pw.FlexColumnWidth(1.5), // Давление
+                    2: const pw.FlexColumnWidth(1), // Пульс
+                    3: const pw.FlexColumnWidth(1.5), // Статус
+                    4: const pw.FlexColumnWidth(
+                        2.5), // Препарат (новая колонка)
                   },
                   children: [
                     pw.TableRow(
@@ -58,13 +60,19 @@ class PdfService {
                         _buildCell('Давление', isHeader: true),
                         _buildCell('Пульс', isHeader: true),
                         _buildCell('Статус', isHeader: true),
+                        _buildCell('Препарат', isHeader: true),
                       ],
                     ),
                     ...records.map((r) {
-                      // Логика цвета: красный если систола > 140 или диастола > 90
                       final bool isHigh = r.systolic > 140 || r.diastolic > 90;
                       final cellColor =
                           isHigh ? PdfColors.red100 : PdfColors.green100;
+
+                      // Формируем строку препарата
+                      final String pillInfo = (r.pillName != null ||
+                              r.pillDose != null)
+                          ? '${r.pillName ?? ''}${r.pillName != null && r.pillDose != null ? ', ' : ''}${r.pillDose ?? ''}'
+                          : '-';
 
                       return pw.TableRow(
                         children: [
@@ -73,6 +81,7 @@ class PdfService {
                               color: cellColor),
                           _buildCell(r.pulse.toString()),
                           _buildCell(r.statusText),
+                          _buildCell(pillInfo),
                         ],
                       );
                     }).toList(),
@@ -89,10 +98,10 @@ class PdfService {
       final file = File(filePath);
       await file.writeAsBytes(await pdf.save());
 
-      // 3. Поделиться (исправленный синтаксис)
+      // 3. Поделиться
       await Share.shareXFiles([XFile(filePath)], text: 'Мой дневник давления');
     } catch (e) {
-      print("Ошибка при создании PDF: $e");
+      // Ошибки можно логировать здесь
     }
   }
 
@@ -106,7 +115,7 @@ class PdfService {
         text,
         style: pw.TextStyle(
           fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
-          fontSize: 11,
+          fontSize: 10, // Чуть уменьшил шрифт, чтобы 5 колонок влезли комфортно
         ),
       ),
     );

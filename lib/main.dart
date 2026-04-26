@@ -1,43 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:pressure_record/widgets/pressure_chart.dart';
-import 'package:pressure_record/screens/splash_screen.dart';
 
 import 'models/pressure_record.dart';
 import 'screens/add_record_screen.dart';
 import 'services/database_service.dart';
 import 'services/pdf_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ru_RU', null);
   runApp(const PressureApp());
-}
-
-/// Расчет среднего за сегодня
-PressureRecord? calculateTodayAverage(List<PressureRecord> records) {
-  final today = DateTime.now();
-  final todayRecords = records
-      .where((r) =>
-          r.dateTime.year == today.year &&
-          r.dateTime.month == today.month &&
-          r.dateTime.day == today.day)
-      .toList();
-
-  if (todayRecords.isEmpty) return null;
-
-  int sys = 0, dia = 0, pul = 0;
-  for (var r in todayRecords) {
-    sys += r.systolic;
-    dia += r.diastolic;
-    pul += r.pulse;
-  }
-
-  return PressureRecord(
-    systolic: (sys / todayRecords.length).round(),
-    diastolic: (dia / todayRecords.length).round(),
-    pulse: (pul / todayRecords.length).round(),
-    dateTime: today,
-  );
 }
 
 class PressureApp extends StatelessWidget {
@@ -45,22 +19,18 @@ class PressureApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFFE57373),
-      brightness: Brightness.light,
-    );
     return MaterialApp(
-      title: 'Дневник Давления',
+      title: 'Моё Давление',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: colorScheme,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
         textTheme: const TextTheme(
           bodyLarge: TextStyle(fontSize: 20),
           bodyMedium: TextStyle(fontSize: 18),
         ),
       ),
-      home: const SplashScreen(),
+      home: const MainHistoryScreen(),
     );
   }
 }
@@ -74,9 +44,8 @@ class MainHistoryScreen extends StatefulWidget {
 
 class _MainHistoryScreenState extends State<MainHistoryScreen> {
   late Future<List<PressureRecord>> _recordsFuture;
-
-  static final _dateHeaderFormat = DateFormat('dd MMMM yyyy');
-  static final _timeFormat = DateFormat('HH:mm');
+  final _dateHeaderFormat = DateFormat('dd MMMM yyyy', 'ru');
+  final _timeFormat = DateFormat('HH:mm');
 
   @override
   void initState() {
@@ -90,64 +59,19 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
     });
   }
 
-  void _showHelpDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Как пользоваться?"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _helpItem(
-                Icons.bar_chart, "Иконка сверху открывает график аналитики."),
-            _helpItem(
-                Icons.swipe_left, "Свайп влево по замеру удалит его из базы."),
-            _helpItem(Icons.circle,
-                "Цвета (синий,зеленый, желтый, красный) показывают уровень давления."),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Понятно"))
-        ],
-      ),
-    );
+  // Удаление записи
+  Future<void> _deleteRecord(int id) async {
+    await DatabaseService.instance.deleteRecord(id);
+    _refreshRecords();
   }
 
-  Widget _helpItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blue),
-          const SizedBox(width: 12),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
-        ],
-      ),
-    );
-  }
-
-  Map<DateTime, List<PressureRecord>> _groupByDay(
-      List<PressureRecord> records) {
-    final map = <DateTime, List<PressureRecord>>{};
-    for (final r in records) {
-      final day = DateTime(r.dateTime.year, r.dateTime.month, r.dateTime.day);
-      map.putIfAbsent(day, () => []).add(r);
-    }
-    final sortedKeys = map.keys.toList()..sort((a, b) => b.compareTo(a));
-    return {
-      for (var k in sortedKeys)
-        k: map[k]!..sort((a, b) => b.dateTime.compareTo(a.dateTime))
-    };
-  }
-
+  // Диалог подтверждения удаления
   Future<bool?> _confirmDelete(BuildContext context) {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Удалить замер?'),
-        content: const Text('Запись будет удалена безвозвратно.'),
+        content: const Text('Запись будет удалена навсегда.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -160,11 +84,73 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
     );
   }
 
+  // Окно помощи
+  void _showHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Как пользоваться?"),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+                leading: Icon(Icons.share, color: Colors.teal),
+                title: Text("Отправить отчет врачу")),
+            ListTile(
+                leading: Icon(Icons.bar_chart, color: Colors.teal),
+                title: Text("График аналитики")),
+            ListTile(
+                leading: Icon(Icons.swipe_left, color: Colors.red),
+                title: Text("Свайп влево — удалить")),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("ПОНЯТНО"))
+        ],
+      ),
+    );
+  }
+
+  (Color, String) _getPressureStatus(PressureRecord r) {
+    if (r.systolic >= 140 || r.diastolic >= 90) return (Colors.red, "ВЫСОКОЕ");
+    if (r.systolic >= 130 || r.diastolic >= 85) {
+      return (Colors.orange, "ПОВЫШ.");
+    }
+    if (r.systolic >= 110 && r.diastolic >= 70) return (Colors.green, "НОРМА");
+    return (Colors.blue, "НИЗКОЕ");
+  }
+
+  PressureRecord? _calculateTodayAverage(List<PressureRecord> records) {
+    final today = DateTime.now();
+    final todayRecords = records
+        .where((r) =>
+            r.dateTime.year == today.year &&
+            r.dateTime.month == today.month &&
+            r.dateTime.day == today.day)
+        .toList();
+    if (todayRecords.isEmpty) return null;
+    int sys = 0, dia = 0, pul = 0;
+    for (var r in todayRecords) {
+      sys += r.systolic;
+      dia += r.diastolic;
+      pul += r.pulse;
+    }
+    return PressureRecord(
+      systolic: (sys / todayRecords.length).round(),
+      diastolic: (dia / todayRecords.length).round(),
+      pulse: (pul / todayRecords.length).round(),
+      dateTime: today,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Мои замеры'),
+        title: const Text('Мои замеры',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -173,31 +159,20 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
               final records = await _recordsFuture;
               if (records.isNotEmpty) {
                 await PdfService.createAndShareReport(records);
-              } else {
-                if (!mounted) return;
-                // Создаем переменную мессенджера ДО использования context
-                final messenger = ScaffoldMessenger.of(context);
-                messenger.showSnackBar(
-                  const SnackBar(content: Text("Нет данных для отчета")),
-                );
               }
             },
           ),
+          // ВОТ ОН, ВОПРОСИК!
           IconButton(
-            icon: const Icon(Icons.help_outline),
-            onPressed: () => _showHelpDialog(context),
-          ),
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => _showHelpDialog(context)),
           IconButton(
-            icon: const Icon(Icons.bar_chart, size: 30), // Иконка графика
-            onPressed: () {
-              Navigator.push(
+            icon: const Icon(Icons.bar_chart, size: 30),
+            onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      StatisticsScreen(recordsFuture: _recordsFuture),
-                ),
-              );
-            },
+                    builder: (context) =>
+                        StatisticsScreen(recordsFuture: _recordsFuture))),
           ),
         ],
       ),
@@ -209,12 +184,19 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
           }
           final records = snapshot.data ?? [];
           if (records.isEmpty) {
-            return const Center(child: Text("Записей пока нет. Нажмите +"));
+            return Center(
+                child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                  Icon(Icons.monitor_heart,
+                      size: 100, color: Colors.teal.withAlpha(70)),
+                  const Text("Записей нет.\nНажмите кнопку ниже.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 20, color: Colors.grey))
+                ]));
           }
-
-          final avg = calculateTodayAverage(records);
+          final avg = _calculateTodayAverage(records);
           final grouped = _groupByDay(records);
-          final days = grouped.keys.toList();
 
           return Column(
             children: [
@@ -222,134 +204,160 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _listItemCount(grouped, days),
+                  itemCount: _listItemCount(grouped),
                   itemBuilder: (context, index) =>
-                      _buildGroupedItem(context, grouped, days, index),
+                      _buildGroupedItem(grouped, index),
                 ),
               ),
             ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.large(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await Navigator.push(context,
               MaterialPageRoute(builder: (context) => const AddRecordScreen()));
           _refreshRecords();
         },
-        child: const Icon(Icons.add),
+        label: const Text('ДОБАВИТЬ ЗАМЕР',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        icon: const Icon(Icons.add),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  // --- Карточка свайпа и удаления ---
+  Widget _buildRecordTile(PressureRecord record) {
+    final (color, status) = _getPressureStatus(record);
+    return Dismissible(
+      key: Key(record.id.toString()),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (direction) => _confirmDelete(context),
+      onDismissed: (direction) => _deleteRecord(record.id!),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+            color: Colors.red, borderRadius: BorderRadius.circular(12)),
+        child: const Icon(Icons.delete, color: Colors.white, size: 30),
+      ),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          title: Text("${record.systolic} / ${record.diastolic}",
+              style:
+                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Пульс: ${record.pulse}   •   ${_timeFormat.format(record.dateTime)}",
+              ),
+              // БЛОК ЛЕКАРСТВ: показываем только если есть данные
+              if (record.pillName != null || record.pillDose != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.medication,
+                          size: 16, color: Colors.teal),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          "${record.pillName ?? ''}${record.pillName != null && record.pillDose != null ? ', ' : ''}${record.pillDose ?? ''}",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.teal,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.favorite, color: color, size: 28),
+              Text(status,
+                  style: TextStyle(
+                      color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  int _listItemCount(
-      Map<DateTime, List<PressureRecord>> grouped, List<DateTime> days) {
-    int count = 0;
-    for (var day in days) {
-      count += 1 + grouped[day]!.length;
+  // --- Логика списка ---
+  Map<DateTime, List<PressureRecord>> _groupByDay(
+      List<PressureRecord> records) {
+    final map = <DateTime, List<PressureRecord>>{};
+    for (final r in records) {
+      final day = DateTime(r.dateTime.year, r.dateTime.month, r.dateTime.day);
+      map.putIfAbsent(day, () => []).add(r);
     }
+    return map;
+  }
+
+  int _listItemCount(Map<DateTime, List<PressureRecord>> grouped) {
+    int count = 0;
+    grouped.forEach((day, records) => count += 1 + records.length);
     return count;
   }
 
   Widget _buildGroupedItem(
-      BuildContext context,
-      Map<DateTime, List<PressureRecord>> grouped,
-      List<DateTime> days,
-      int index) {
+      Map<DateTime, List<PressureRecord>> grouped, int index) {
     int currentIdx = 0;
-    for (var day in days) {
+    final sortedDays = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    for (var day in sortedDays) {
       if (currentIdx == index) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Text(_dateHeaderFormat.format(day),
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor)),
-        );
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(_dateHeaderFormat.format(day),
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.teal)));
       }
       currentIdx++;
       for (var record in grouped[day]!) {
-        if (currentIdx == index) {
-          return Dismissible(
-            key: Key(record.id.toString()),
-            direction: DismissDirection.endToStart,
-            confirmDismiss: (_) => _confirmDelete(context),
-            onDismissed: (_) async {
-              await DatabaseService.instance.deleteRecord(record.id!);
-              _refreshRecords();
-            },
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20),
-              color: Colors.red,
-              child: const Icon(Icons.delete, color: Colors.white),
-            ),
-            child: _buildRecordTile(record),
-          );
-        }
+        if (currentIdx == index) return _buildRecordTile(record);
         currentIdx++;
       }
     }
     return const SizedBox.shrink();
   }
 
-  Widget _buildRecordTile(PressureRecord record) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(
-          Icons.favorite_rounded,
-          color: record.statusColor,
-          size: 32,
-        ),
-        title: Text('${record.systolic} / ${record.diastolic}',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        subtitle: Text(
-            'Пульс: ${record.pulse} • ${_timeFormat.format(record.dateTime)}'),
-        trailing: Text(record.statusText,
-            style: TextStyle(
-                color: record.statusColor, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
   Widget _buildAverageCard(PressureRecord avg) {
     return Card(
+      color: Colors.teal.shade50,
       margin: const EdgeInsets.all(16),
-      elevation: 4,
-      color: avg.statusColor.withValues(alpha: 0.5),
+      elevation: 0,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: avg.statusColor, width: 2)),
+          borderRadius: BorderRadius.circular(15),
+          side: BorderSide(color: Colors.teal.shade100)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            const Text("СРЕДНЕЕ ЗА СЕГОДНЯ",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatColumn("Давление", "${avg.systolic}/${avg.diastolic}",
-                    avg.statusColor),
-                _buildStatColumn("Пульс", "${avg.pulse}", Colors.black87),
-              ],
-            ),
+            Column(children: [
+              Text("${avg.systolic}/${avg.diastolic}",
+                  style: const TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.bold)),
+              const Text("Среднее")
+            ]),
+            Column(children: [
+              Text("${avg.pulse}",
+                  style: const TextStyle(
+                      fontSize: 26, fontWeight: FontWeight.bold)),
+              const Text("Пульс")
+            ]),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatColumn(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        Text(value,
-            style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.bold, color: color)),
-      ],
     );
   }
 }
@@ -357,47 +365,17 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
 class StatisticsScreen extends StatelessWidget {
   final Future<List<PressureRecord>> recordsFuture;
   const StatisticsScreen({super.key, required this.recordsFuture});
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Аналитика")),
+      appBar: AppBar(title: const Text("Статистика")),
       body: FutureBuilder<List<PressureRecord>>(
         future: recordsFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          final records = snapshot.data ?? [];
-          if (records.isEmpty) {
-            return const Center(child: Text("Нет данных для анализа"));
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  "Динамика давления",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                // Оборачиваем график в Expanded, чтобы он занял доступное место
-                Expanded(
-                  child: PressureChart(records: records),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  "Всего замеров: ${records.length}",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          );
+          return PressureChart(records: snapshot.data!);
         },
       ),
     );
