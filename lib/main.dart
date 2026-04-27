@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:pressure_record/widgets/pressure_chart.dart';
+import 'package:pressure_record/widgets/record_tile.dart';
 
 import 'models/pressure_record.dart';
 import 'screens/add_record_screen.dart';
@@ -113,15 +114,6 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
     );
   }
 
-  (Color, String) _getPressureStatus(PressureRecord r) {
-    if (r.systolic >= 140 || r.diastolic >= 90) return (Colors.red, "ВЫСОКОЕ");
-    if (r.systolic >= 130 || r.diastolic >= 85) {
-      return (Colors.orange, "ПОВЫШ.");
-    }
-    if (r.systolic >= 110 && r.diastolic >= 70) return (Colors.green, "НОРМА");
-    return (Colors.blue, "НИЗКОЕ");
-  }
-
   PressureRecord? _calculateTodayAverage(List<PressureRecord> records) {
     final today = DateTime.now();
     final todayRecords = records
@@ -229,78 +221,22 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
 
   // --- Карточка свайпа и удаления ---
   Widget _buildRecordTile(PressureRecord record) {
-    final (color, status) = _getPressureStatus(record);
-    return Dismissible(
-      key: Key(record.id.toString()),
-      direction: DismissDirection.endToStart,
-      confirmDismiss: (direction) => _confirmDelete(context),
-      onDismissed: (direction) => _deleteRecord(record.id!),
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        decoration: BoxDecoration(
-            color: Colors.red, borderRadius: BorderRadius.circular(12)),
-        child: const Icon(Icons.delete, color: Colors.white, size: 30),
-      ),
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          title: Text("${record.systolic} / ${record.diastolic}",
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Пульс: ${record.pulse}   •   ${_timeFormat.format(record.dateTime)}",
-              ),
-              // БЛОК ЛЕКАРСТВ: показываем только если есть данные
-              if (record.pillName != null || record.pillDose != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.medication,
-                          size: 16, color: Colors.teal),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          "${record.pillName ?? ''}${record.pillName != null && record.pillDose != null ? ', ' : ''}${record.pillDose ?? ''}",
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.teal,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.favorite, color: color, size: 28),
-              Text(status,
-                  style: TextStyle(
-                      color: color, fontSize: 10, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-      ),
+    return RecordTile(
+      record: record,
+      timeFormat: _timeFormat,
+      confirmDelete: _confirmDelete,
+      deleteRecord: _deleteRecord,
     );
   }
 
   // --- Логика списка ---
   Map<DateTime, List<PressureRecord>> _groupByDay(
       List<PressureRecord> records) {
-    final map = <DateTime, List<PressureRecord>>{};
-    for (final r in records) {
+    return records.fold(<DateTime, List<PressureRecord>>{}, (map, r) {
       final day = DateTime(r.dateTime.year, r.dateTime.month, r.dateTime.day);
-      map.putIfAbsent(day, () => []).add(r);
-    }
-    return map;
+      (map[day] ??= []).add(r);
+      return map;
+    });
   }
 
   int _listItemCount(Map<DateTime, List<PressureRecord>> grouped) {
