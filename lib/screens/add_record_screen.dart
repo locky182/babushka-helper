@@ -19,6 +19,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final SpeechToText _speechToText = SpeechToText();
 
   bool _isListening = false;
+  TextEditingController? _activeController;
   String _lastWords = '';
 
   final _systolicController = TextEditingController();
@@ -26,6 +27,48 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final _pulseController = TextEditingController();
   final _pillNameController = TextEditingController();
   final _pillDoseController = TextEditingController();
+
+  Future<void> _listenToField(TextEditingController controller) async {
+    debugPrint('!!! ПИШУ В КОНТРОЛЛЕР: \\${controller.text}');
+    try {
+      await _speechToText.stop();
+      if (!_speechToText.isAvailable) {
+        await _speechToText.initialize();
+      }
+      final micStatus = await Permission.microphone.request();
+      if (micStatus != PermissionStatus.granted) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Необходимо разрешение микрофона')),
+        );
+        return;
+      }
+
+      if (!_speechToText.isListening) {
+        await _speechToText.initialize(
+          onStatus: (status) => debugPrint('Status: \$status'),
+          onError: (error) => debugPrint('Error: \$error'),
+        );
+      }
+
+      await _speechToText.listen(
+        localeId: "ru_RU",
+        listenFor: const Duration(seconds: 5),
+        onResult: (result) {
+          setState(() {
+            _lastWords = result.recognizedWords;
+          });
+          if (result.finalResult && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Слышу: $_lastWords')),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Error in _listenToField: \$e');
+    }
+  }
 
   List<String> _dynamicSuggestions = [
     'Лозартан',
@@ -97,7 +140,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
     return InputDecoration(
       labelText: label,
       prefixIcon: icon != null ? Icon(icon) : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
       border: const OutlineInputBorder(),
     );
   }
@@ -285,19 +328,27 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           },
           onLongPressEnd: (_) {
             debugPrint('!!! КОНЕЦ УДЕРЖАНИЯ');
+            final lastWordsSnapshot =
+                _lastWords; // Сохраняем текущее значение перед остановкой
             setState(() => _isListening = false);
+            _speechToText.stop();
 
-            // Простая логика извлечения цифр
-            if (_lastWords.isNotEmpty) {
+            // Извлекаем цифры из сохраненного значения
+            if (lastWordsSnapshot.isNotEmpty) {
               final numbers = RegExp(r'\d+')
-                  .allMatches(_lastWords)
+                  .allMatches(lastWordsSnapshot)
                   .map((m) => m.group(0)!)
                   .toList();
 
               if (numbers.isNotEmpty) {
-                _systolicController.text = numbers[0];
-                if (numbers.length >= 2) _diastolicController.text = numbers[1];
-                if (numbers.length >= 3) _pulseController.text = numbers[2];
+                _systolicController.text =
+                    numbers.last; // Берем последнее распознанное число
+                if (numbers.length >= 2) {
+                  _diastolicController.text = numbers[numbers.length - 2];
+                }
+                if (numbers.length >= 3) {
+                  _pulseController.text = numbers[numbers.length - 3];
+                }
 
                 setState(() {});
 
@@ -317,31 +368,151 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            TextFormField(
-              controller: _systolicController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: _decoration('Верхнее (Систола)'),
-              style: const TextStyle(fontSize: 24),
-              validator: _validateSystolic,
+            Row(
+              children: [
+                SizedBox(
+                  width: 270,
+                  child: TextFormField(
+                    controller: _systolicController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: _decoration('Верхнее (Систола)'),
+                    style: const TextStyle(fontSize: 21.12),
+                    validator: _validateSystolic,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                GestureDetector(
+                  onLongPressStart: (_) {
+                    debugPrint('!!! СТАРТ УДЕРЖАНИЯ (СИСТОЛА)');
+                    _lastWords = '';
+                    setState(() => _activeController = _systolicController);
+                    _listenToField(_systolicController);
+                  },
+                  onLongPressEnd: (_) {
+                    final recognizedText = _lastWords;
+                    _speechToText.stop();
+                    final numbers = RegExp(r'\d+')
+                        .allMatches(recognizedText)
+                        .map((m) => m.group(0)!)
+                        .toList();
+                    if (numbers.isNotEmpty) {
+                      _systolicController.text = numbers.last;
+                    }
+                    setState(() => _activeController = null);
+                  },
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _activeController == _systolicController
+                          ? Colors.green
+                          : Colors.blue,
+                    ),
+                    child: const Icon(Icons.mic, size: 28, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
-            TextFormField(
-              controller: _diastolicController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: _decoration('Нижнее (Диастола)'),
-              style: const TextStyle(fontSize: 24),
-              validator: _validateDiastolic,
+            Row(
+              children: [
+                SizedBox(
+                  width: 270,
+                  child: TextFormField(
+                    controller: _diastolicController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: _decoration('Нижнее (Диастола)'),
+                    style: const TextStyle(fontSize: 21.12),
+                    validator: _validateDiastolic,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                GestureDetector(
+                  onLongPressStart: (_) {
+                    debugPrint('!!! СТАРТ УДЕРЖАНИЯ (ДИАСТОЛА)');
+                    _lastWords = '';
+                    setState(() => _activeController = _diastolicController);
+                    _listenToField(_diastolicController);
+                  },
+                  onLongPressEnd: (_) {
+                    final recognizedText = _lastWords;
+                    _speechToText.stop();
+                    final numbers = RegExp(r'\d+')
+                        .allMatches(recognizedText)
+                        .map((m) => m.group(0)!)
+                        .toList();
+                    if (numbers.isNotEmpty) {
+                      _diastolicController.text = numbers.last;
+                    }
+                    setState(() => _activeController = null);
+                  },
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _activeController == _diastolicController
+                          ? Colors.green
+                          : Colors.blue,
+                    ),
+                    child: const Icon(Icons.mic, size: 24, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
-            TextFormField(
-              controller: _pulseController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: _decoration('Пульс'),
-              style: const TextStyle(fontSize: 24),
-              validator: _validatePulse,
+            Row(
+              children: [
+                SizedBox(
+                  width: 270,
+                  child: TextFormField(
+                    controller: _pulseController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: _decoration('Пульс'),
+                    style: const TextStyle(fontSize: 21.12),
+                    validator: _validatePulse,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                GestureDetector(
+                  onLongPressStart: (_) {
+                    debugPrint('!!! СТАРТ УДЕРЖАНИЯ (ПУЛЬС)');
+                    setState(() {
+                      _lastWords = '';
+                      _activeController = _pulseController;
+                    });
+                    _listenToField(_pulseController);
+                  },
+                  onLongPressEnd: (_) {
+                    final recognizedText =
+                        _lastWords; // Хватаем текст ДО остановки
+                    _speechToText.stop();
+                    final numbers = RegExp(r'\d+')
+                        .allMatches(recognizedText)
+                        .map((m) => m.group(0)!)
+                        .toList();
+                    if (numbers.isNotEmpty) {
+                      _pulseController.text = numbers.last;
+                    }
+                    setState(() => _activeController = null);
+                  },
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _activeController == _pulseController
+                          ? Colors.green
+                          : Colors.blue,
+                    ),
+                    child: const Icon(Icons.mic, size: 24, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
