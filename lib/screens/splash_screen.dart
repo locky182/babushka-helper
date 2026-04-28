@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:pressure_record/main.dart'; // Убедись, что путь верный, или импортируй main.dart
+import 'package:babushka_pressure/screens/profile_selection_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,7 +17,8 @@ class _SplashScreenState extends State<SplashScreen> {
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainHistoryScreen()),
+          MaterialPageRoute(
+              builder: (context) => const ProfileSelectionScreen()),
         );
       }
     });

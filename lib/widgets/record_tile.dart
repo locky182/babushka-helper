@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/pressure_record.dart';
+import "../models/pressure_record.dart";
 
 class RecordTile extends StatelessWidget {
   final PressureRecord record;

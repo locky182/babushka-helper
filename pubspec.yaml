@@ -1,4 +1,4 @@
-name: pressure_record
+name: babushka_pressure
 description: "Приложение для бабушки: контроль давления"
 publish_to: "none"
 version: 1.0.0+1

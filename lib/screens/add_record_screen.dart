@@ -8,7 +8,8 @@ import '../models/pressure_record.dart';
 import '../services/database_service.dart';
 
 class AddRecordScreen extends StatefulWidget {
-  const AddRecordScreen({super.key});
+  final int userId;
+  const AddRecordScreen({super.key, required this.userId});
 
   @override
   State<AddRecordScreen> createState() => _AddRecordScreenState();
@@ -89,7 +90,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   }
 
   Future<void> _loadPillHistory() async {
-    final records = await DatabaseService.instance.getRecords();
+    final records =
+        await DatabaseService.instance.getRecords(userId: widget.userId);
     final historyPills = records
         .map((r) => r.pillName)
         .where((name) => name != null && name.isNotEmpty)
@@ -97,7 +99,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
         .toSet();
 
     setState(() {
-      _dynamicSuggestions = {..._dynamicSuggestions, ...historyPills}.toList();
+      _dynamicSuggestions = [..._dynamicSuggestions, ...historyPills];
     });
   }
 
@@ -189,6 +191,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           _pillNameController.text.isEmpty ? null : _pillNameController.text,
       pillDose:
           _pillDoseController.text.isEmpty ? null : _pillDoseController.text,
+      userId: widget.userId,
     );
 
     await DatabaseService.instance.insertRecord(record);

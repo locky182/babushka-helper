@@ -11,6 +11,7 @@ class PressureRecord {
   final DateTime dateTime;
   final String? pillName; // Название лекарства
   final String? pillDose; // Дозировка
+  final int? userId; // ID пользователя
 
   PressureRecord({
     this.id,
@@ -20,6 +21,7 @@ class PressureRecord {
     required this.dateTime,
     this.pillName,
     this.pillDose,
+    this.userId,
   });
 
   // Конвертация в Map для БД (sqflite)
@@ -32,6 +34,7 @@ class PressureRecord {
       'dateTime': dateTime.toIso8601String(),
       'pillName': pillName,
       'pillDose': pillDose,
+      'userId': userId,
     };
   }
 
@@ -45,6 +48,7 @@ class PressureRecord {
       dateTime: DateTime.parse(map['dateTime']),
       pillName: map['pillName'],
       pillDose: map['pillDose'],
+      userId: map['userId'],
     );
   }
 

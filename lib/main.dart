@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:pressure_record/widgets/pressure_chart.dart';
-import 'package:pressure_record/widgets/record_tile.dart';
+import 'package:babushka_pressure/widgets/pressure_chart.dart';
+import 'package:babushka_pressure/widgets/record_tile.dart';
 
 import 'models/pressure_record.dart';
-import 'screens/add_record_screen.dart';
-import 'services/database_service.dart';
 import 'services/pdf_service.dart';
+import 'screens/add_record_screen.dart';
+import 'screens/profile_selection_screen.dart';
+import 'services/database_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,8 +16,16 @@ void main() async {
   runApp(const PressureApp());
 }
 
-class PressureApp extends StatelessWidget {
+class PressureApp extends StatefulWidget {
   const PressureApp({super.key});
+
+  @override
+  State<PressureApp> createState() => _PressureAppState();
+}
+
+class _PressureAppState extends State<PressureApp> {
+  // Сохраняем userId в состоянии приложения
+  int? _currentUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +40,32 @@ class PressureApp extends StatelessWidget {
           bodyMedium: TextStyle(fontSize: 18),
         ),
       ),
-      home: const MainHistoryScreen(),
+      home: _currentUserId == null
+          ? const ProfileSelectionScreen()
+          : MainHistoryScreen(userId: _currentUserId!),
+      onGenerateRoute: (settings) {
+        if (settings.name == '/home') {
+          final userId = settings.arguments as int;
+          _currentUserId = userId;
+          return MaterialPageRoute(
+            builder: (context) => MainHistoryScreen(userId: userId),
+          );
+        }
+        if (settings.name == '/profile') {
+          _currentUserId = null;
+          return MaterialPageRoute(
+            builder: (context) => const ProfileSelectionScreen(),
+          );
+        }
+        return null;
+      },
     );
   }
 }
 
 class MainHistoryScreen extends StatefulWidget {
-  const MainHistoryScreen({super.key});
+  final int userId;
+  const MainHistoryScreen({super.key, required this.userId});
 
   @override
   State<MainHistoryScreen> createState() => _MainHistoryScreenState();
@@ -56,7 +84,8 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
 
   void _refreshRecords() {
     setState(() {
-      _recordsFuture = DatabaseService.instance.getRecords();
+      _recordsFuture =
+          DatabaseService.instance.getRecords(userId: widget.userId);
     });
   }
 
@@ -85,7 +114,19 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
     );
   }
 
-  // Окно помощи
+  Future<void> _exportPdfReport(BuildContext context) async {
+    try {
+      final records =
+          await DatabaseService.instance.getRecords(userId: widget.userId);
+      await PdfService.createAndShareReport(records);
+    } catch (e) {
+      if (!context.mounted) return; // Вот ПРАВИЛЬНОЕ место для проверки
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ошибка при экспорте: \$e')),
+      );
+    }
+  }
+
   void _showHelpDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -141,30 +182,93 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Мои замеры',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: FutureBuilder<Map<String, dynamic>>(
+          future: DatabaseService.instance.getUsers().then(
+              (users) => users.firstWhere((u) => u['id'] == widget.userId)),
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return Text(snapshot.data!["name"],
+                  style: const TextStyle(fontSize: 20));
+            }
+            return const Text('');
+          },
+        ),
         centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16.0),
+          child: FutureBuilder<Map<String, dynamic>>(
+            future: DatabaseService.instance.getUsers().then(
+                (users) => users.firstWhere((u) => u['id'] == widget.userId)),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                final user = snapshot.data!;
+                return CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  child: Icon(
+                    user['iconKey'] == 'male' ? Icons.male : Icons.female,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                );
+              }
+              return const SizedBox();
+            },
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () async {
-              final records = await _recordsFuture;
-              if (records.isNotEmpty) {
-                await PdfService.createAndShareReport(records);
+            tooltip: 'Поделиться отчетом',
+            onPressed: () => _exportPdfReport(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.bar_chart),
+            tooltip: 'Статистика',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => StatisticsScreen(
+                  recordsFuture: DatabaseService.instance
+                      .getRecords(userId: widget.userId),
+                ),
+              ),
+            ),
+          ),
+          PopupMenuButton<String>(
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'switch',
+                child: Row(
+                  children: [
+                    Icon(Icons.switch_account,
+                        color: Theme.of(context).primaryColor),
+                    const SizedBox(width: 8),
+                    const Text('Сменить профиль'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'help',
+                child: Row(
+                  children: [
+                    Icon(Icons.help_outline,
+                        color: Theme.of(context).primaryColor),
+                    const SizedBox(width: 8),
+                    const Text('Справка'),
+                  ],
+                ),
+              ),
+            ],
+            onSelected: (value) {
+              switch (value) {
+                case 'switch':
+                  Navigator.pushReplacementNamed(context, '/profile');
+                  break;
+                case 'help':
+                  _showHelpDialog(context);
+                  break;
               }
             },
-          ),
-          // ВОТ ОН, ВОПРОСИК!
-          IconButton(
-              icon: const Icon(Icons.help_outline),
-              onPressed: () => _showHelpDialog(context)),
-          IconButton(
-            icon: const Icon(Icons.bar_chart, size: 30),
-            onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) =>
-                        StatisticsScreen(recordsFuture: _recordsFuture))),
           ),
         ],
       ),
@@ -207,8 +311,12 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          await Navigator.push(context,
-              MaterialPageRoute(builder: (context) => const AddRecordScreen()));
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddRecordScreen(userId: widget.userId),
+            ),
+          );
           _refreshRecords();
         },
         label: const Text('ДОБАВИТЬ ЗАМЕР',
