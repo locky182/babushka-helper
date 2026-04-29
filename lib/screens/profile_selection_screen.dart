@@ -229,10 +229,11 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                             if (nameController
                                                 .text.isNotEmpty) {
                                               Navigator.pop(context, {
+                                                'id': user['id'],
                                                 'name': nameController.text,
                                                 'iconKey': selectedIcon,
-                                                'colorValue':
-                                                    Colors.green[400]!.r,
+                                                'colorValue': Colors.green[400]!
+                                                    .toARGB32(),
                                               });
                                             }
                                           },
@@ -253,6 +254,10 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                     colorValue: result['colorValue'],
                                   ),
                                 );
+                                setState(() {
+                                  _usersFuture =
+                                      DatabaseService.instance.getUsers();
+                                });
                                 setState(() {
                                   _usersFuture =
                                       DatabaseService.instance.getUsers();
