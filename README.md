@@ -4,7 +4,7 @@
 
 Мобильное приложение на Flutter для простого контроля артериального давления. Специально разработано с учетом потребностей пожилых людей: крупные шрифты, контрастные цвета и понятный интерфейс.
 
-🚀[СКАЧАТЬ ПРИЛОЖЕНИЕ (APK)](https://github.com/locky182/babushka-helper/releases/download/v2.0/app-armeabi-v7a-release.apk)
+🚀[СКАЧАТЬ ПРИЛОЖЕНИЕ (APK)](https://github.com/locky182/babushka-helper/releases/download/v3.0/app-armeabi-v7a-release.apk)
 
 ## ✨ Основные функции
 - ✅ Добавление замеров (систолическое, диастолическое давление и пульс).
