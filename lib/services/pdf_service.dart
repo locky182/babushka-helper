@@ -7,7 +7,8 @@ import 'package:share_plus/share_plus.dart';
 import '../models/pressure_record.dart';
 
 class PdfService {
-  static Future<void> createAndShareReport(List<PressureRecord> records) async {
+  static Future<void> createAndShareReport(
+      List<PressureRecord> records, String userName) async {
     final pdf = pw.Document();
 
     try {
@@ -27,7 +28,7 @@ class PdfService {
             return [
               pw.Header(
                 level: 0,
-                child: pw.Text('Дневник контроля давления',
+                child: pw.Text('Дневник контроля давления: $userName',
                     style: pw.TextStyle(
                         fontSize: 24, fontWeight: pw.FontWeight.bold)),
               ),
@@ -94,12 +95,17 @@ class PdfService {
 
       // 2. Сохранение
       final output = await getTemporaryDirectory();
-      final filePath = "${output.path}/pressure_report.pdf";
+      final String dateStr =
+          DateTime.now().toString().split(' ')[0].replaceAll('-', '_');
+      final String safeUserName =
+          userName.replaceAll(RegExp(r'[^\w\sА-я]'), '_');
+      final filePath = "${output.path}/Report_${safeUserName}_$dateStr.pdf";
       final file = File(filePath);
       await file.writeAsBytes(await pdf.save());
 
       // 3. Поделиться
-      await Share.shareXFiles([XFile(filePath)], text: 'Мой дневник давления');
+      await Share.shareXFiles([XFile(filePath)],
+          text: 'Дневник давления пациента: $userName');
     } catch (e) {
       // Ошибки можно логировать здесь
     }

@@ -50,8 +50,24 @@ class RecordTile extends StatelessWidget {
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Пульс: ${record.pulse}   •   ${timeFormat.format(record.dateTime)}",
+              Row(
+                children: [
+                  const Text("Пульс: "),
+                  Icon(
+                    Icons.monitor_heart,
+                    size: 18,
+                    color: PressureRecord.getPulseColor(record.pulse),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    "${record.pulse}",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: PressureRecord.getPulseColor(record.pulse),
+                    ),
+                  ),
+                  Text("   •   ${timeFormat.format(record.dateTime)}"),
+                ],
               ),
               if (record.pillName != null || record.pillDose != null)
                 Padding(

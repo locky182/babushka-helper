@@ -96,4 +96,11 @@ class PressureRecord {
   }
 
   bool get isHigh => status == PressureStatus.high;
+
+  static Color getPulseColor(int pulse) {
+    if (pulse < 55) return Colors.blue; // Брадикардия
+    if (pulse <= 90) return Colors.green; // Норма (включая 55-60)
+    if (pulse <= 110) return Colors.orange; // Повышенный
+    return Colors.red; // Тахикардия
+  }
 }

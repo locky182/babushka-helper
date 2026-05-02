@@ -17,34 +17,96 @@ class PressureChart extends StatelessWidget {
       );
     }
 
-    // Сортируем записи по дате, чтобы график шел слева направо
     final sortedRecords = List<PressureRecord>.from(records)
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
+    // Рассчитываем средний пульс для определения цвета линии
+    final avgPulse = sortedRecords.isEmpty
+        ? 0
+        : (sortedRecords.map((r) => r.pulse).reduce((a, b) => a + b) /
+                sortedRecords.length)
+            .round();
+    final pulseColor = PressureRecord.getPulseColor(avgPulse);
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              "Давление (мм рт.ст.)",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+          _buildChart(
+            records: sortedRecords,
+            height: 300,
+            minY: 40,
+            maxY: 220,
+            lineBarsData: [
+              _generateLine(sortedRecords, isSystolic: true),
+              _generateLine(sortedRecords, isSystolic: false),
+            ],
+            touchLabel: 'мм рт.ст.',
+          ),
+          const Divider(height: 40, thickness: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.monitor_heart, color: pulseColor),
+                const SizedBox(width: 8),
+                const Text(
+                  "Пульс (уд/мин)",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+          _buildChart(
+            records: sortedRecords,
+            height: 200,
+            minY: 40,
+            maxY: 160,
+            lineBarsData: [
+              _generatePulseLine(sortedRecords, pulseColor),
+            ],
+            touchLabel: 'уд/мин',
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChart({
+    required List<PressureRecord> records,
+    required double height,
+    required double minY,
+    required double maxY,
+    required List<LineChartBarData> lineBarsData,
+    required String touchLabel,
+  }) {
     return Container(
-      height: 350,
-      padding: const EdgeInsets.only(right: 20, left: 10, top: 20),
+      height: height,
+      padding: const EdgeInsets.only(right: 20, left: 10, top: 10),
       child: LineChart(
         LineChartData(
-          lineTouchData: _buildTouchData(),
+          lineTouchData: _buildTouchData(touchLabel),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (value) => FlLine(
-              color:
-                  Colors.grey.withValues(alpha: 0.2), // Исправлено (withValues)
+              color: Colors.grey.withValues(alpha: 0.2),
               strokeWidth: 1,
             ),
           ),
-          titlesData: _buildTitles(sortedRecords),
+          titlesData: _buildTitles(records),
           borderData: FlBorderData(show: false),
-          lineBarsData: [
-            _generateLine(sortedRecords, isSystolic: true),
-            _generateLine(sortedRecords, isSystolic: false),
-          ],
-          // Устанавливаем границы Y для стабильности картинки
-          minY: 40,
-          maxY: 220,
+          lineBarsData: lineBarsData,
+          minY: minY,
+          maxY: maxY,
         ),
       ),
     );
@@ -74,11 +136,37 @@ class PressureChart extends StatelessWidget {
       ),
       belowBarData: BarAreaData(
         show: true,
-        color: isSystolic
-            ? Colors.redAccent
-                .withValues(alpha: 0.05) // Исправлено (withValues)
-            : Colors.blueAccent
-                .withValues(alpha: 0.05), // Исправлено (withValues)
+        color: (isSystolic ? Colors.redAccent : Colors.blueAccent)
+            .withValues(alpha: 0.05),
+      ),
+    );
+  }
+
+  LineChartBarData _generatePulseLine(
+      List<PressureRecord> sortedRecords, Color color) {
+    return LineChartBarData(
+      spots: sortedRecords.asMap().entries.map((entry) {
+        final index = entry.key.toDouble();
+        final value = entry.value.pulse;
+        return FlSpot(index, value.toDouble());
+      }).toList(),
+      isCurved: true,
+      color: color,
+      barWidth: 3,
+      dotData: FlDotData(
+        show: true,
+        getDotPainter: (spot, percent, barData, index) {
+          return FlDotCirclePainter(
+            radius: 4,
+            color: PressureRecord.getPulseColor(sortedRecords[index].pulse),
+            strokeWidth: 2,
+            strokeColor: Colors.white,
+          );
+        },
+      ),
+      belowBarData: BarAreaData(
+        show: true,
+        color: color.withValues(alpha: 0.1),
       ),
     );
   }
@@ -103,12 +191,10 @@ class PressureChart extends StatelessWidget {
           interval: 1,
           getTitlesWidget: (value, meta) {
             int index = value.toInt();
-            // Исправлено: добавлены фигурные скобки {}
             if (index < 0 || index >= sortedRecords.length) {
               return const SizedBox();
             }
 
-            // Показываем дату только для каждой 3-й точки, чтобы не частить
             if (sortedRecords.length > 5 &&
                 index % (sortedRecords.length ~/ 3) != 0) {
               return const SizedBox();
@@ -128,15 +214,14 @@ class PressureChart extends StatelessWidget {
     );
   }
 
-  LineTouchData _buildTouchData() {
+  LineTouchData _buildTouchData(String label) {
     return LineTouchData(
       touchTooltipData: LineTouchTooltipData(
-        getTooltipColor: (group) =>
-            Colors.white.withValues(alpha: 0.9), // Исправлено (withValues)
+        getTooltipColor: (group) => Colors.white.withValues(alpha: 0.9),
         getTooltipItems: (touchedSpots) {
           return touchedSpots.map((spot) {
             return LineTooltipItem(
-              '${spot.y.toInt()} мм рт.ст.',
+              '${spot.y.toInt()} $label',
               const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
             );
           }).toList();
