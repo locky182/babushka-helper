@@ -61,6 +61,10 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                     onTap: () async {
                       final nameController = TextEditingController();
                       final ageController = TextEditingController();
+                      final targetSysController =
+                          TextEditingController(text: '120');
+                      final targetDiaController =
+                          TextEditingController(text: '80');
                       String selectedIcon = 'male';
                       final result = await showDialog(
                         context: context,
@@ -68,50 +72,81 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                           builder: (context, setState) {
                             return AlertDialog(
                               title: const Text('Добавить профиль'),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TextField(
-                                    controller: nameController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Имя профиля',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  TextField(
-                                    controller: ageController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Возраст',
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const Text('Выберите пол:'),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.male),
-                                        color: selectedIcon == 'male'
-                                            ? Colors.blue
-                                            : Colors.grey,
-                                        onPressed: () => setState(
-                                            () => selectedIcon = 'male'),
-                                        iconSize: 40,
+                              content: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextField(
+                                      controller: nameController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Имя профиля',
                                       ),
-                                      const SizedBox(width: 20),
-                                      IconButton(
-                                        icon: const Icon(Icons.female),
-                                        color: selectedIcon == 'female'
-                                            ? Colors.blue
-                                            : Colors.grey,
-                                        onPressed: () => setState(
-                                            () => selectedIcon = 'female'),
-                                        iconSize: 40,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextField(
+                                      controller: ageController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Возраст',
                                       ),
-                                    ],
-                                  ),
-                                ],
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                          'Целевое давление (норма пользователя):',
+                                          style: TextStyle(fontSize: 12)),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextField(
+                                            controller: targetSysController,
+                                            decoration: const InputDecoration(
+                                                labelText: 'Сист.'),
+                                            keyboardType: TextInputType.number,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: targetDiaController,
+                                            decoration: const InputDecoration(
+                                                labelText: 'Диас.'),
+                                            keyboardType: TextInputType.number,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text('Выберите пол:'),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.male),
+                                          color: selectedIcon == 'male'
+                                              ? Colors.blue
+                                              : Colors.grey,
+                                          onPressed: () => setState(
+                                              () => selectedIcon = 'male'),
+                                          iconSize: 40,
+                                        ),
+                                        const SizedBox(width: 20),
+                                        IconButton(
+                                          icon: const Icon(Icons.female),
+                                          color: selectedIcon == 'female'
+                                              ? Colors.blue
+                                              : Colors.grey,
+                                          onPressed: () => setState(
+                                              () => selectedIcon = 'female'),
+                                          iconSize: 40,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                               actions: [
                                 TextButton(
@@ -126,8 +161,14 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                         'age':
                                             int.tryParse(ageController.text) ??
                                                 0,
+                                        'targetSystolic': int.tryParse(
+                                                targetSysController.text) ??
+                                            120,
+                                        'targetDiastolic': int.tryParse(
+                                                targetDiaController.text) ??
+                                            80,
                                         'iconKey': selectedIcon,
-                                        'colorValue': 0, // Не используется
+                                        'colorValue': 0,
                                       });
                                     }
                                   },
@@ -186,6 +227,12 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                   TextEditingController(text: user['name']);
                               final ageController = TextEditingController(
                                   text: (user['age'] ?? 0).toString());
+                              final targetSysController = TextEditingController(
+                                  text: (user['targetSystolic'] ?? 120)
+                                      .toString());
+                              final targetDiaController = TextEditingController(
+                                  text: (user['targetDiastolic'] ?? 80)
+                                      .toString());
                               String selectedIcon = user['iconKey'];
                               final result = await showDialog(
                                 context: context,
@@ -194,51 +241,93 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                     return AlertDialog(
                                       title:
                                           const Text('Редактировать профиль'),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          TextField(
-                                            controller: nameController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Имя профиля',
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          TextField(
-                                            controller: ageController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Возраст',
-                                            ),
-                                            keyboardType: TextInputType.number,
-                                          ),
-                                          const SizedBox(height: 16),
-                                          const Text('Выберите пол:'),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              IconButton(
-                                                icon: const Icon(Icons.male),
-                                                color: selectedIcon == 'male'
-                                                    ? Colors.blue
-                                                    : Colors.grey,
-                                                onPressed: () => setState(() =>
-                                                    selectedIcon = 'male'),
-                                                iconSize: 40,
+                                      content: SingleChildScrollView(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            TextField(
+                                              controller: nameController,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Имя профиля',
                                               ),
-                                              const SizedBox(width: 20),
-                                              IconButton(
-                                                icon: const Icon(Icons.female),
-                                                color: selectedIcon == 'female'
-                                                    ? Colors.blue
-                                                    : Colors.grey,
-                                                onPressed: () => setState(() =>
-                                                    selectedIcon = 'female'),
-                                                iconSize: 40,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            TextField(
+                                              controller: ageController,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Возраст',
                                               ),
-                                            ],
-                                          ),
-                                        ],
+                                              keyboardType:
+                                                  TextInputType.number,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            const Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                  'Целевое давление (норма пользователя):',
+                                                  style:
+                                                      TextStyle(fontSize: 12)),
+                                            ),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: TextField(
+                                                    controller:
+                                                        targetSysController,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                            labelText: 'Сист.'),
+                                                    keyboardType:
+                                                        TextInputType.number,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 16),
+                                                Expanded(
+                                                  child: TextField(
+                                                    controller:
+                                                        targetDiaController,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                            labelText: 'Диас.'),
+                                                    keyboardType:
+                                                        TextInputType.number,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 16),
+                                            const Text('Выберите пол:'),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                IconButton(
+                                                  icon: const Icon(Icons.male),
+                                                  color: selectedIcon == 'male'
+                                                      ? Colors.blue
+                                                      : Colors.grey,
+                                                  onPressed: () => setState(
+                                                      () => selectedIcon =
+                                                          'male'),
+                                                  iconSize: 40,
+                                                ),
+                                                const SizedBox(width: 20),
+                                                IconButton(
+                                                  icon:
+                                                      const Icon(Icons.female),
+                                                  color:
+                                                      selectedIcon == 'female'
+                                                          ? Colors.blue
+                                                          : Colors.grey,
+                                                  onPressed: () => setState(
+                                                      () => selectedIcon =
+                                                          'female'),
+                                                  iconSize: 40,
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                       actions: [
                                         TextButton(
@@ -256,6 +345,14 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                                 'age': int.tryParse(
                                                         ageController.text) ??
                                                     0,
+                                                'targetSystolic': int.tryParse(
+                                                        targetSysController
+                                                            .text) ??
+                                                    120,
+                                                'targetDiastolic': int.tryParse(
+                                                        targetDiaController
+                                                            .text) ??
+                                                    80,
                                                 'iconKey': selectedIcon,
                                                 'colorValue':
                                                     user['colorValue'] ?? 0,
@@ -276,14 +373,12 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                     id: user['id'],
                                     name: result['name'],
                                     age: result['age'],
+                                    targetSystolic: result['targetSystolic'],
+                                    targetDiastolic: result['targetDiastolic'],
                                     iconKey: result['iconKey'],
                                     colorValue: result['colorValue'],
                                   ),
                                 );
-                                setState(() {
-                                  _usersFuture =
-                                      DatabaseService.instance.getUsers();
-                                });
                                 setState(() {
                                   _usersFuture =
                                       DatabaseService.instance.getUsers();
@@ -356,6 +451,14 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${user['age'] ?? 0} лет • Цель: ${user['targetSystolic'] ?? 120}/${user['targetDiastolic'] ?? 80}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
                           ),
                         ),
                       ],

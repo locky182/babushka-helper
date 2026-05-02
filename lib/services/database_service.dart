@@ -20,7 +20,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -42,6 +42,8 @@ class DatabaseService {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             age INTEGER NOT NULL DEFAULT 0,
+            targetSystolic INTEGER NOT NULL DEFAULT 120,
+            targetDiastolic INTEGER NOT NULL DEFAULT 80,
             iconKey TEXT NOT NULL,
             colorValue INTEGER NOT NULL
           )
@@ -82,6 +84,17 @@ class DatabaseService {
           if (!hasAge) {
             await db.execute(
                 'ALTER TABLE users ADD COLUMN age INTEGER NOT NULL DEFAULT 0');
+          }
+        }
+        if (oldVersion < 5) {
+          final columns = await db.rawQuery("PRAGMA table_info(users)");
+          final hasTargetSys =
+              columns.any((c) => c['name'] == 'targetSystolic');
+          if (!hasTargetSys) {
+            await db.execute(
+                'ALTER TABLE users ADD COLUMN targetSystolic INTEGER NOT NULL DEFAULT 120');
+            await db.execute(
+                'ALTER TABLE users ADD COLUMN targetDiastolic INTEGER NOT NULL DEFAULT 80');
           }
         }
       },

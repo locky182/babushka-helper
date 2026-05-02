@@ -7,8 +7,8 @@ import 'package:share_plus/share_plus.dart';
 import '../models/pressure_record.dart';
 
 class PdfService {
-  static Future<void> createAndShareReport(
-      List<PressureRecord> records, String userName, int age) async {
+  static Future<void> createAndShareReport(List<PressureRecord> records,
+      String userName, int age, int targetSys, int targetDia) async {
     final pdf = pw.Document();
 
     try {
@@ -34,6 +34,11 @@ class PdfService {
               ),
               pw.Paragraph(
                 text: 'Возраст: $age лет',
+                style: const pw.TextStyle(fontSize: 16),
+              ),
+              pw.Paragraph(
+                text:
+                    'Целевое давление пациента: $targetSys/$targetDia мм рт. ст.',
                 style: const pw.TextStyle(fontSize: 16),
               ),
               pw.Paragraph(
