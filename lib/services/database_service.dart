@@ -20,7 +20,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -41,6 +41,7 @@ class DatabaseService {
           CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
+            age INTEGER NOT NULL DEFAULT 0,
             iconKey TEXT NOT NULL,
             colorValue INTEGER NOT NULL
           )
@@ -73,6 +74,14 @@ class DatabaseService {
           if (!hasUserId) {
             await db.execute('ALTER TABLE records ADD COLUMN userId INTEGER');
             await db.execute('UPDATE records SET userId = 1');
+          }
+        }
+        if (oldVersion < 4) {
+          final columns = await db.rawQuery("PRAGMA table_info(users)");
+          final hasAge = columns.any((c) => c['name'] == 'age');
+          if (!hasAge) {
+            await db.execute(
+                'ALTER TABLE users ADD COLUMN age INTEGER NOT NULL DEFAULT 0');
           }
         }
       },

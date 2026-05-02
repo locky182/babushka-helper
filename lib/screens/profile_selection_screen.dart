@@ -60,6 +60,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                     borderRadius: BorderRadius.circular(16),
                     onTap: () async {
                       final nameController = TextEditingController();
+                      final ageController = TextEditingController();
                       String selectedIcon = 'male';
                       final result = await showDialog(
                         context: context,
@@ -75,6 +76,14 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                     decoration: const InputDecoration(
                                       labelText: 'Имя профиля',
                                     ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextField(
+                                    controller: ageController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Возраст',
+                                    ),
+                                    keyboardType: TextInputType.number,
                                   ),
                                   const SizedBox(height: 16),
                                   const Text('Выберите пол:'),
@@ -114,8 +123,11 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                     if (nameController.text.isNotEmpty) {
                                       Navigator.pop(context, {
                                         'name': nameController.text,
+                                        'age':
+                                            int.tryParse(ageController.text) ??
+                                                0,
                                         'iconKey': selectedIcon,
-                                        'colorValue': Colors.green[400]!.r,
+                                        'colorValue': 0, // Не используется
                                       });
                                     }
                                   },
@@ -172,6 +184,8 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                               Navigator.pop(context);
                               final nameController =
                                   TextEditingController(text: user['name']);
+                              final ageController = TextEditingController(
+                                  text: (user['age'] ?? 0).toString());
                               String selectedIcon = user['iconKey'];
                               final result = await showDialog(
                                 context: context,
@@ -188,6 +202,14 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                             decoration: const InputDecoration(
                                               labelText: 'Имя профиля',
                                             ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          TextField(
+                                            controller: ageController,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Возраст',
+                                            ),
+                                            keyboardType: TextInputType.number,
                                           ),
                                           const SizedBox(height: 16),
                                           const Text('Выберите пол:'),
@@ -231,9 +253,12 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                               Navigator.pop(context, {
                                                 'id': user['id'],
                                                 'name': nameController.text,
+                                                'age': int.tryParse(
+                                                        ageController.text) ??
+                                                    0,
                                                 'iconKey': selectedIcon,
-                                                'colorValue': Colors.green[400]!
-                                                    .toARGB32(),
+                                                'colorValue':
+                                                    user['colorValue'] ?? 0,
                                               });
                                             }
                                           },
@@ -250,6 +275,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                   UserProfile(
                                     id: user['id'],
                                     name: result['name'],
+                                    age: result['age'],
                                     iconKey: result['iconKey'],
                                     colorValue: result['colorValue'],
                                   ),

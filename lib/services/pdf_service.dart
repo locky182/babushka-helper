@@ -8,7 +8,7 @@ import '../models/pressure_record.dart';
 
 class PdfService {
   static Future<void> createAndShareReport(
-      List<PressureRecord> records, String userName) async {
+      List<PressureRecord> records, String userName, int age) async {
     final pdf = pw.Document();
 
     try {
@@ -31,6 +31,10 @@ class PdfService {
                 child: pw.Text('Дневник контроля давления: $userName',
                     style: pw.TextStyle(
                         fontSize: 24, fontWeight: pw.FontWeight.bold)),
+              ),
+              pw.Paragraph(
+                text: 'Возраст: $age лет',
+                style: const pw.TextStyle(fontSize: 16),
               ),
               pw.Paragraph(
                 text:

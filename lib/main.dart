@@ -121,7 +121,8 @@ class _MainHistoryScreenState extends State<MainHistoryScreen> {
       final users = await DatabaseService.instance.getUsers();
       final user = users.firstWhere((u) => u['id'] == widget.userId);
       final userName = user['name'] ?? 'Пациент';
-      await PdfService.createAndShareReport(records, userName);
+      final userAge = user['age'] ?? 0;
+      await PdfService.createAndShareReport(records, userName, userAge);
     } catch (e) {
       if (!context.mounted) return; // Вот ПРАВИЛЬНОЕ место для проверки
       ScaffoldMessenger.of(context).showSnackBar(
