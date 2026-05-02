@@ -29,7 +29,6 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   final _pillDoseController = TextEditingController();
 
   Future<void> _listenToField(TextEditingController controller) async {
-    debugPrint('!!! ПИШУ В КОНТРОЛЛЕР: \\${controller.text}');
     try {
       await _speechToText.stop();
       if (!_speechToText.isAvailable) {
@@ -46,8 +45,8 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
 
       if (!_speechToText.isListening) {
         await _speechToText.initialize(
-          onStatus: (status) => debugPrint('Status: \$status'),
-          onError: (error) => debugPrint('Error: \$error'),
+          onStatus: (status) {},
+          onError: (error) {},
         );
       }
 
@@ -225,7 +224,6 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 const SizedBox(width: 20),
                 GestureDetector(
                   onLongPressStart: (_) {
-                    debugPrint('!!! СТАРТ УДЕРЖАНИЯ (СИСТОЛА)');
                     _lastWords = '';
                     setState(() => _activeController = _systolicController);
                     _listenToField(_systolicController);
@@ -273,7 +271,6 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 const SizedBox(width: 20),
                 GestureDetector(
                   onLongPressStart: (_) {
-                    debugPrint('!!! СТАРТ УДЕРЖАНИЯ (ДИАСТОЛА)');
                     _lastWords = '';
                     setState(() => _activeController = _diastolicController);
                     _listenToField(_diastolicController);
@@ -321,7 +318,6 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 const SizedBox(width: 20),
                 GestureDetector(
                   onLongPressStart: (_) {
-                    debugPrint('!!! СТАРТ УДЕРЖАНИЯ (ПУЛЬС)');
                     setState(() {
                       _lastWords = '';
                       _activeController = _pulseController;

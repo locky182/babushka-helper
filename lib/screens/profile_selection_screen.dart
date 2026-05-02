@@ -87,6 +87,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                       controller: ageController,
                                       decoration: const InputDecoration(
                                         labelText: 'Возраст',
+                                        hintText: 'Например: 70',
                                       ),
                                       keyboardType: TextInputType.number,
                                     ),
@@ -155,22 +156,26 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    if (nameController.text.isNotEmpty) {
-                                      Navigator.pop(context, {
-                                        'name': nameController.text,
-                                        'age':
-                                            int.tryParse(ageController.text) ??
-                                                0,
-                                        'targetSystolic': int.tryParse(
-                                                targetSysController.text) ??
-                                            120,
-                                        'targetDiastolic': int.tryParse(
-                                                targetDiaController.text) ??
-                                            80,
-                                        'iconKey': selectedIcon,
-                                        'colorValue': 0,
-                                      });
-                                    }
+                                    final name = nameController.text.trim();
+                                    final ageStr = ageController.text.trim();
+                                    if (name.isEmpty) return;
+
+                                    final age = int.tryParse(ageStr) ?? 0;
+                                    final targetSys = int.tryParse(
+                                            targetSysController.text) ??
+                                        120;
+                                    final targetDia = int.tryParse(
+                                            targetDiaController.text) ??
+                                        80;
+
+                                    Navigator.pop(context, {
+                                      'name': name,
+                                      'age': age,
+                                      'targetSystolic': targetSys,
+                                      'targetDiastolic': targetDia,
+                                      'iconKey': selectedIcon,
+                                      'colorValue': 0,
+                                    });
                                   },
                                   child: const Text('Сохранить'),
                                 ),
@@ -256,6 +261,7 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                               controller: ageController,
                                               decoration: const InputDecoration(
                                                 labelText: 'Возраст',
+                                                hintText: 'Например: 70',
                                               ),
                                               keyboardType:
                                                   TextInputType.number,
@@ -337,27 +343,31 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
                                         ),
                                         TextButton(
                                           onPressed: () {
-                                            if (nameController
-                                                .text.isNotEmpty) {
-                                              Navigator.pop(context, {
-                                                'id': user['id'],
-                                                'name': nameController.text,
-                                                'age': int.tryParse(
-                                                        ageController.text) ??
-                                                    0,
-                                                'targetSystolic': int.tryParse(
-                                                        targetSysController
-                                                            .text) ??
-                                                    120,
-                                                'targetDiastolic': int.tryParse(
-                                                        targetDiaController
-                                                            .text) ??
-                                                    80,
-                                                'iconKey': selectedIcon,
-                                                'colorValue':
-                                                    user['colorValue'] ?? 0,
-                                              });
-                                            }
+                                            final name =
+                                                nameController.text.trim();
+                                            final ageStr =
+                                                ageController.text.trim();
+                                            if (name.isEmpty) return;
+
+                                            final age =
+                                                int.tryParse(ageStr) ?? 0;
+                                            final targetSys = int.tryParse(
+                                                    targetSysController.text) ??
+                                                120;
+                                            final targetDia = int.tryParse(
+                                                    targetDiaController.text) ??
+                                                80;
+
+                                            Navigator.pop(context, {
+                                              'id': user['id'],
+                                              'name': name,
+                                              'age': age,
+                                              'targetSystolic': targetSys,
+                                              'targetDiastolic': targetDia,
+                                              'iconKey': selectedIcon,
+                                              'colorValue':
+                                                  user['colorValue'] ?? 0,
+                                            });
                                           },
                                           child: const Text('Сохранить'),
                                         ),
